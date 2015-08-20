@@ -1,0 +1,457 @@
+<html>
+
+<!--
+
+jQuery Games - Senha - http://site/
+===================
+
+    Senha is a game...
+
+    Senha eh um jogo..
+
+Author:
+    Daniel Werle Arenhart (www.site.net)
+
+License:
+    http://en.wikipedia.org/wiki/MIT_license
+
+-->
+
+<head>
+
+    <script language="JavaScript" src="../lib/jquery-1.7.1.min.js"> </script>
+    <script language="JavaScript" src="jquery-ui-senha.min.js"> </script>
+    
+</head>
+
+<body>
+
+<style>
+
+    #geral{
+        float:left;
+    }
+
+    #options {border:solid 1px #AAAAAA; padding:8px; width:150px; background-color:#EEEEEE; float:left;}
+
+    #tabuleiro { 
+        margin: 20px;
+        padding: 5px;
+        float:left;
+        border:solid 1px; 
+        background-color:#CCCC99;
+    }
+
+    #colors { 
+        padding: 10px;
+        float:left;
+    }
+
+    .cor_option { z-index:20; }
+    
+    .tentativas { float:left; }
+    .resultados { float:left; width:80px;}
+    .tents_results { }
+    .senha { display:none;}
+    .senhaItem { float:left;}
+
+    .resultadoItem { float: left; }
+
+    .linhaTentativa { height: 35px;}
+    .resultado { height: 35px; }
+
+    .droppable {
+        background-color:white;
+        float:left;
+    }
+  
+    .bola { 
+        width:5px; height: 5px;border:solid #333333 1px; padding:10px;margin:2px; 
+        moz-border-radius: 10px;
+        -webkit-border-radius: 10px;
+        border-radius: 10px;
+    }
+
+    .bolinha { width:3px; height: 3px; border:solid #333333 1px; padding:3px;margin:1px; 
+        moz-border-radius: 10px;
+        -webkit-border-radius: 10px;
+        border-radius:10px;
+    }
+    
+    .goNext { padding-top:3px;
+        width:35px; height: 25px; font-family:"Sans-serif"; border: solid #444444 1px;text-align:center; cursor:pointer; color:#444444; margin:2px;
+        moz-border-radius: 4px;
+        -webkit-border-radius: 4px;
+        border-radius: 4px;
+    } 
+    .goNext:HOVER {color:black; background-color: #88DD88;}
+
+    .result-nada { background-color: ; } 
+    .result-posicao { background-color: black  ; } 
+    .result-cor { background-color: white; } 
+
+	.blue { background-color: #5555ff; }
+	.yellow { background-color: #ffff55;}
+	.green { background-color: #55ff55;}
+	.brown { background-color: #bb4444;}
+	.cyan { background-color: #55ffff;}
+	.red { background-color: #ff5555;}
+	.grey { background-color: #999999;}
+	.orange { background-color: #ffAA33;}
+	.roxo { background-color: #BA55D3;}
+	
+	.ativo { border:solid #FFFFFF 1px;  background-color:#BBBBBB; }
+	
+    .label { width:70px; float:left}
+    input[type="text"] { width:50px;}
+    #help { font-size:12px;}
+    .showHelp { cursor:pointer; border:solid 1px; width:15px; background-color:#FF7777; text-align:center; float:left;
+        moz-border-radius: 4px;
+        -webkit-border-radius: 4px;
+        border-radius: 4px;
+    }
+
+
+</style>
+
+
+	<script>
+
+    var colors = new Array("blue","yellow","green", "brown", "cyan", "red", 'grey', 'orange', 'roxo');
+    var aval_colors = new Array();
+    var numTentativa;
+    var over = false;
+    
+    var numColors;
+    var rows;
+    var columns;
+
+    function getAvaliableColors()
+    {
+        var aval_colors = new Array();
+        for (var i = 0; i<$('#colors>div').size(); i++)
+        {
+            aval_colors.push($('#colors>div:eq('+i+')').getColor());
+        }
+        return aval_colors;
+    }
+
+    function getLineTentativaColors(numTentativa){
+
+        var size = $('#tabuleiro').find('.linhaTentativa:eq('+numTentativa+')>div').size();
+        var tent_colors = new Array();
+        for (var i = 0; i<size; i++)
+        {
+            tent_colors.push($('#tabuleiro').find('.linhaTentativa:eq('+numTentativa+')>div:eq('+i+')').getColor());
+        }
+
+        return tent_colors;
+    }
+
+    function getLineResultColors(numTentativa){
+
+        var size = $('#tabuleiro').find('.resultado:eq('+numTentativa+')>div>div').size();
+        var res_colors = new Array();
+        for (var i = 0; i<size; i++)
+        {
+            res_colors.push($('#tabuleiro').find('.resultado:eq('+numTentativa+')>div>div:eq('+i+')').getResultColor());
+        }
+
+        return res_colors;
+    }
+
+    function getLineTentativa(numTentativa){
+        return $('#tabuleiro').find('.linhaTentativa:eq('+numTentativa+')');
+    }
+
+    function getLineResultado(numTentativa){
+        return $('#tabuleiro').find('.resultado:eq('+numTentativa+')');
+    }
+
+    var fnCreateGame;
+    function reset()
+    {
+       fnCreateGame(rows, columns, numColors);
+    }
+    
+	$(document).ready(function() {
+
+
+        // ativa as color options
+        $.fn.activeDraggables = function(){
+            this.draggable({ revert: true, revertDuration: 200 });
+        };
+
+        // obtem a cor de um item, ou seja, verifica qual das cores do array colors o objeto tem
+        $.fn.getResultColor = function()
+        {
+            var results = ['result-nada','result-posicao','result-cor'];
+            for(var i = 0; i<results.length;i++)
+            {
+                if (this.hasClass(results[i])){
+                    return results[i]; 
+                }
+            }
+        };
+
+        // obtem a cor de um item, ou seja, verifica qual das cores do array colors o objeto tem
+        $.fn.getColor = function()
+        {
+            for(var i = 0; i<colors.length;i++)
+            {
+                if (this.hasClass(colors[i])){
+                    return colors[i]; 
+                }
+            }
+        };
+
+        // ativa todos 'droppables' que tiverem no objeto
+        $.fn.activeDroppables = function()
+        {
+            this.find( ".droppable" )
+                .droppable({
+        	    hoverClass: "ativo",
+                drop: function( event, ui ) {
+                    var droppable = $(this);
+                    // remover cores existentes
+                    $.each(colors, function(index,color) {
+                        if (color != ui.draggable.getColor())
+                        {
+                            droppable.removeClass(color);
+                        }
+                    });
+                    droppable.addClass(ui.draggable.getColor());
+                    droppable.activeDraggables();
+                }
+            });
+        };
+
+        // cria o botao GO no objeto para passar para proxima tentativa
+        $.fn.makeGo = function()
+        {
+            this.html($('<div>GO</div>').addClass('goNext'));
+            $('.goNext').click(function(){
+               nextTentativa();
+            });
+        };
+
+        function ganhou()
+        {
+            over = true;
+            $('.senha').fadeIn();
+            $('.resultados').append('Win!');
+            $('.goNext').hide();
+        }
+
+        function perdeu()
+        {
+            over = true;
+            $('.senha').fadeIn();
+            $('.resultados').append('Looser!');
+            $('.goNext').hide();
+        }
+
+        // mostra o resultado de uma tentativa
+        $.fn.showResult = function(lineTentativa)
+        {
+            var senha = $('.senhaItem');
+            var alvoResult = $('<div>').hide();
+            var lineResult = this;
+            var acertos = 0;
+            lineResult.html(alvoResult);
+
+            // para cada item da senha
+            senha.each(function(senhaIndex){
+                var senhaItem = $(this);
+            
+                // obtem a tentativa respectiva ao index da senha
+                var tentativa = lineTentativa.find('.droppable:nth-child('+(senhaIndex+1)+')');
+
+                var result = 'result-nada';
+                // verifica se acertou a posicao
+                if (senhaItem.hasClass(tentativa.getColor()))
+                {       
+                    result = 'result-posicao';
+                    acertos++;
+                }
+                // se nao acertou a posicao, verifica se acertou a cor
+                else if (senha.hasClass(tentativa.getColor()))
+                {
+                    result = 'result-cor';
+                }
+                result = result + ' bolinha resultadoItem';
+                alvoResult.append($('<div>').addClass(result));
+                alvoResult.fadeIn();
+                
+                // se eh o ultimo item da senha sendo verificado
+                if (senhaIndex+1 >= senha.size()) 
+                {
+                    // Se ganhou
+                    if (acertos >= senha.size())
+                    {
+                        ganhou();
+                    }
+                    // se perdeu 
+                    else if (numTentativa >= $('.linhaTentativa').size())
+                    {
+                        perdeu();
+                    }
+                }
+            });
+        };
+
+        // mostra o resultado da tentativa, desativa a linha e ativa a proxima
+        function nextTentativa(){
+            // active line
+            getLineTentativa(numTentativa).activeDroppables();
+            getLineResultado(numTentativa).makeGo();
+
+            // deactive line anterior e mostra resultado ( apenas se nao for o primeiro turno)
+            if (numTentativa > 0)
+            {
+                var lineTentativa = getLineTentativa(numTentativa-1);
+                lineTentativa.find( ".droppable" ).droppable('destroy');
+                getLineResultado(numTentativa-1).showResult(lineTentativa);
+            }
+
+            numTentativa++;
+        }
+
+        // colors options
+        function createColorOptions()
+        {
+            $("#colors").html('');
+            $.each(colors, function(index,color) {
+                if (index < numColors)
+                {
+                    $("#colors").append($("<div class='bola draggable cor_option'></div>").addClass(color));
+                }
+            });
+            $("#colors").find('.draggable').activeDraggables();
+        }
+
+        // criar tabuleiro
+        fnCreateGame = function createGame(rowsPar, columnsPar, numColorsPar)
+        {
+            numColors = (numColorsPar > colors.length) ? colors.length : numColorsPar;
+            rows = rowsPar;
+            columns = columnsPar;
+            over = false;
+            
+            $("#tabuleiro").html('');
+
+            createColorOptions();
+
+            $("#tabuleiro").append($("<div>").addClass("tents_results"));
+            $(".tents_results").append($('<div>').addClass('tentativas'));
+            $(".tents_results").append($('<div>').addClass('resultados'));
+            // cria rows
+            for (var i = 0; i<rows; i++)
+            {
+                $(".tentativas").append($('<div>').addClass('linhaTentativa')); 
+            }
+            
+            // preenche cada row
+            $(".tentativas").find('.linhaTentativa').each(function() {
+                for (var i = 0; i<columns; i++)
+                {
+                    var droppable = $("<div>").addClass("bola droppable");
+                    $(this).append(droppable);
+                }    
+                $(".resultados").append($("<div>").addClass('resultado'));
+            });
+            
+            // cria a senha aleatoria
+            var linhaSenha = $('<div>').addClass('senha');
+            for (var i = 0; i<columns; i++)
+            {
+                var corAleatoria = colors[Math.floor(Math.random()*numColors)];
+                var senhaItem =  $("<div>").addClass("senhaItem bola "+corAleatoria); 
+                linhaSenha.append(senhaItem);
+            }
+            $("#tabuleiro").append(linhaSenha);
+            
+            numTentativa = 0;
+            aval_colors = getAvaliableColors();
+            nextTentativa();
+            $(".resultados").css("width",columns*13);
+            $(document).trigger("createdGame");
+            
+        }
+        
+        function createInputs()
+        {
+            // campos para mudar o tamanho do jogo
+            $("#options").append("<div class='label'>tentativas</div><input type='text' id='rows' ><br>");
+            $("#options").append("<div class='label'>colunas</div><input type='text' id='columns' ><br>");
+            $("#options").append("<div class='label'>cores</div><input type='text' id='numColors' ><br>");
+            $("#options").append("<div class='label'>&nbsp;</div><input type='button' id='createTabuleiro' value='reset' ><br>");
+            
+            $('#createTabuleiro').click(function(){
+                rows = $("#rows").val();
+                columns = $("#columns").val();
+                numColors = $("#numColors").val();                                
+                reset();
+            });
+            $("#rows").change(function(){$("#createTabuleiro").click()});
+            $("#columns").change(function(){$("#createTabuleiro").click()});
+            $("#numColors").change(function(){$("#createTabuleiro").click()});
+        }
+
+        function createHelp()
+        {
+            $("#options").append("<div title='help' class='showHelp'>?</div><br>");
+            var help = $('<div id="help"></div>');
+            $('#options').append(help);
+            help.append('Arraste as cores e tente descobrir a senha.<br><br>');
+            help.append('<div class="bolinha result-cor" style="float:left;"></div> - Apenas acertou a cor<br>');
+            help.append('<div class="bolinha result-posicao" style="float:left;"></div> - Acertou a cor e a posicao');
+            help.hide();
+            $('.showHelp').click(function(){
+                help.fadeIn('fast');
+                $(this).hide();
+            });
+        }
+
+        //===========================///
+
+        createInputs();
+
+        // Help
+        createHelp();
+
+        var tentativas = 6;
+        var colunas = 4;
+        var numCores = 7;
+
+        $('#rows').val(tentativas);
+        $('#columns').val(colunas);
+        $('#numColors').val(numCores);
+
+        fnCreateGame(tentativas, colunas, numCores);
+        
+    });
+
+	</script>
+    <!-- solver and tree -->
+    <!-- 
+    <script language="JavaScript" src="../daniel-tree.js"> </script>  
+    <script language="JavaScript" src="../lib/jquery-tree/jquery.jOrgChart.js"></script>
+    <link rel="stylesheet" href="../lib/jquery-tree/jquery.jOrgChart.css"/>  
+    <script language="JavaScript" src="senha-solver.js"> </script>
+    -->
+
+<div id="geral">
+
+    <h2 style="padding-left:180px;">Senha</h2>
+
+    <div id="options"></div>
+    <div id="colors"></div>
+    <div id="tabuleiro"></div>
+
+
+</div>
+
+</body>
+
+</html>
